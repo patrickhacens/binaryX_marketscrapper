@@ -20,7 +20,7 @@ Console.WriteLine($"BNB: {bnbPrice}\tBNX: {bnxPrice}\t GOLD: {goldPrice}");
 Console.WriteLine("Loading offers");
 var itens = await R.LoadAllViableItens();
 
-RoiResult GetResultForLevel(Item item, int level)
+RoiResult GetResultForLevel(Offer item, int level)
 {
     int mainStat = R.GetMainStat(item);
     var goldByDay = R.GoldByDay(mainStat, level);
@@ -117,14 +117,7 @@ public static class R
         => (decimal)((864 + 288 * (mainStat - 86)) * Math.Pow(2, level - 2));
 
 
-    public static int GetMainStat(Item item) => Helpers.CarrersIdsReverse[item.Career_Address] switch
-    {
-        Carrer.Mage => item.Brains,
-        Carrer.Ranger => item.Strength,
-        Carrer.Thief => item.Agility,
-        Carrer.Warrior => item.Strength,
-        _ => -1
-    };
+    
 
     public static Task<CoinApiResult> GetBnxPrice()
         => _client.GetFromJsonAsync<CoinApiResult>("https://api.pancakeswap.info/api/v2/tokens/0x8C851d1a123Ff703BD1f9dabe631b69902Df5f97");
@@ -136,7 +129,7 @@ public static class R
         => _client.GetFromJsonAsync<BinanceApiResult>("https://api.binance.com/api/v3/avgPrice?symbol=BNBUSDT");
 
 
-    public static async Task<List<Item>> LoadAllViableItens()
+    public static async Task<List<Offer>> LoadAllViableItens()
     {
         var handler = new ClearanceHandler("http://localhost:8191");
 
@@ -145,7 +138,7 @@ public static class R
             BaseAddress = new Uri("https://market.binaryx.pro")
         };
 
-        List<Item> result = new List<Item>();
+        List<Offer> result = new();
 
         foreach (var filter in Helpers.ClassFilters)
         {
@@ -156,7 +149,7 @@ public static class R
 
             while (count == -1 || page * size < count)
             {
-                var response = await client.GetFromJsonAsync<ApiResult>($"info/getSales?page={page}&page_size={size}&status=selling&n&sort=price&direction=asc&career={Helpers.CarrersIds[filter.Key]}&value_attr={filter.Value}&start_value=86,61&end_value=0,0&pay_addr=");
+                var response = await client.GetFromJsonAsync<BinaryXMartketApiResult>($"info/getSales?page={page}&page_size={size}&status=selling&n&sort=price&direction=asc&career={Helpers.CarrersIds[filter.Key]}&value_attr={filter.Value}&start_value=86,61&end_value=0,0&pay_addr=");
 
                 if (count == -1)
                     count = response?.Data?.Result?.Total ?? 0;

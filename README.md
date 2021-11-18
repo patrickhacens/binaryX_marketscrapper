@@ -1,2 +1,3 @@
-# binaryX_marketscrapper
-BinaryX tool to check for best ROI or gold/d in binaryX market
+# BinaryX Market Calculator
+
+This is a api scrapper that queries BinaryX market `https://market.binaryx.pro` and returns the best matchup with 

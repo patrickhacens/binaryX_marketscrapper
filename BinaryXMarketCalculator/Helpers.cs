@@ -4,10 +4,10 @@ class Helpers
 {
     public static Dictionary<Carrer, string> ClassFilters = new()
     {
-        { Carrer.Warrior, $"{nameof(Item.Strength)},{nameof(Item.Physique)}".ToLower() },
-        { Carrer.Mage, $"{nameof(Item.Brains)},{nameof(Item.Charm)}".ToLower() },
-        { Carrer.Thief, $"{nameof(Item.Agility)},{nameof(Item.Strength)}".ToLower() },
-        { Carrer.Ranger, $"{nameof(Item.Strength)},{nameof(Item.Agility)}".ToLower() },
+        { Carrer.Warrior, $"{nameof(Offer.Strength)},{nameof(Offer.Physique)}".ToLower() },
+        { Carrer.Mage, $"{nameof(Offer.Brains)},{nameof(Offer.Charm)}".ToLower() },
+        { Carrer.Thief, $"{nameof(Offer.Agility)},{nameof(Offer.Strength)}".ToLower() },
+        { Carrer.Ranger, $"{nameof(Offer.Strength)},{nameof(Offer.Agility)}".ToLower() },
     };
 
     public static Dictionary<Carrer, string> CarrersIds = new()
@@ -23,7 +23,8 @@ class Helpers
         { 1, 0 },
         { 2, 20000 },
         { 3, 50000 },
-        { 4, 150000 }
+        { 4, 150000 },
+        
     };
 
     public static Dictionary<string, Carrer> CarrersIdsReverse = CarrersIds.ToDictionary(d => d.Value, d => d.Key);
