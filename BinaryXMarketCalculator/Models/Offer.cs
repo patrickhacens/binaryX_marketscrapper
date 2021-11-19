@@ -1,4 +1,7 @@
-﻿namespace BinaryXMarketCalculator;
+﻿using BinaryXMarketCalculator.Models;
+using System.Text.Json.Serialization;
+
+namespace BinaryXMarketCalculator;
 
 public class Offer
 {
@@ -7,8 +10,12 @@ public class Offer
     public string Price { get; set; }
     public string Buyer { get; set; }
     public string Seller { get; set; }
-    public string Pay_Addr { get; set; }
-    public string Career_Address { get; set; }
+
+    [JsonPropertyName("pay_addr")]
+    public CoinType Coin { get; set; }
+
+    [JsonPropertyName("career_address")]
+    public Carrer Carrer { get; set; }
     public string Token_Id { get; set; }
     public int Block_Number { get; set; }
     public int Strength { get; set; }

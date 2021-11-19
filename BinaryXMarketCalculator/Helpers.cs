@@ -18,14 +18,7 @@ class Helpers
         { Carrer.Ranger, "0xF31913a9C8EFE7cE7F08A1c08757C166b572a937" },
     };
 
-    public static Dictionary<int, int> GoldForLevel = new()
-    {
-        { 1, 0 },
-        { 2, 20000 },
-        { 3, 50000 },
-        { 4, 150000 },
-        
-    };
+    
 
     public static Dictionary<string, Carrer> CarrersIdsReverse = CarrersIds.ToDictionary(d => d.Value, d => d.Key);
 }

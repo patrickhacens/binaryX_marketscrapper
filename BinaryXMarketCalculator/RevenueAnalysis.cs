@@ -2,20 +2,15 @@
 {
     public class RevenueAnalysis
     {
-        public Opportunity Opportunity { get; set; }
-
-        public decimal TotalInvesment { get; set; }
-
-        public decimal TotalInvesmentInBnb { get; set; }
-
-        public decimal BnxCost { get; set; }
-
-        public decimal GoldCost { get; set; }
-
-        public decimal LevelUpCost { get; set; }
-
+        public Offer Offer { get; set; }
+        public GoldJob Job { get; set; }
+        public double TotalInvestment { get; set; }
+        public double TotalInvestmentInBnb { get; set; }
+        public double BnxCost { get; set; }
+        public double GoldCost { get; set; }
+        public double GoldDay { get; set; }
+        public double LevelUpCost { get; set; }
         public int LevelUpBy { get; set; }
-
         public TimeSpan Roi { get; set; }
     }
 }

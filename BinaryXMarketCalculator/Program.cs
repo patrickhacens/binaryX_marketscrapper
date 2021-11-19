@@ -1,178 +1,253 @@
-﻿using BinaryXMarketCalculator;
+﻿// requires docker run -d  --name=flaresolverr   -p 8191:8191   -e LOG_LEVEL=info   --restart unless-stopped   ghcr.io/flaresolverr/flaresolverr:latest
+using BinaryXMarketCalculator;
+using BinaryXMarketCalculator.Models;
 using FlareSolverrSharp;
 using System.Net.Http.Json;
 
-// requires docker run -d  --name=flaresolverr   -p 8191:8191   -e LOG_LEVEL=info   --restart unless-stopped   ghcr.io/flaresolverr/flaresolverr:latest
+string input;
 
+Console.WriteLine("Starting");
 
-
-var bnbPriceResponse = await R.GetBnbPrice();
-var bnxPriceResponse = await R.GetBnxPrice();
-var goldPriceResponse = await R.GetGoldPrice();
-
-
-var bnxPrice = bnxPriceResponse.Data.Price;
-var goldPrice = goldPriceResponse.Data.Price;
-var bnbPrice = bnbPriceResponse.Price;
-
-Console.WriteLine($"BNB: {bnbPrice}\tBNX: {bnxPrice}\t GOLD: {goldPrice}");
-
-Console.WriteLine("Loading offers");
-var itens = await R.LoadAllViableItens();
-
-RoiResult GetResultForLevel(Offer item, int level)
+MarketCalculator calculator = new();
+await calculator.RefreshPrices();
+await calculator.RefreshOffers();
+Prices();
+Console.WriteLine("Started, type help to see commands");
+do
 {
-    int mainStat = R.GetMainStat(item);
-    var goldByDay = R.GoldByDay(mainStat, level);
-    var minInvestInGold = R.GetGoldToLevelUp(item.Level, level);
-    var levelUpBy = level - item.Level;
-    var investmentInGold = minInvestInGold * goldPrice;
-    var minInvestInBnx = (decimal)(double.Parse(item.Price) / Math.Pow(10, 18));
-    var totalInvestment = minInvestInBnx * bnxPrice + investmentInGold;
-    var totalInvestmentInBnb = totalInvestment / bnbPrice;
-    var roi = TimeSpan.FromHours((double)(totalInvestment / (goldByDay * goldPrice)) * 24);
-    var result = new RoiResult()
+    input = Console.ReadLine();
+    string[] param = input.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(d => d.ToLower()).ToArray();
+    switch (param[0])
     {
-        Item = item,
-        Level = level,
-        MinInvestInBnx = minInvestInBnx,
-        GoldByDay = goldByDay,
-        LevelUpBy = levelUpBy,
-        TotalInvestment = totalInvestment,
-        InvestmentInGold = investmentInGold,
-        MinInvestInGold = minInvestInGold,
-        TotalInvestmentInBnb = totalInvestmentInBnb,
-        Roi = roi,
-    };
-    return result;
-}
-
-
-var data = itens.Select(item =>
-{
-    List<RoiResult> results = new List<RoiResult>();
-    for (int i = Math.Max(2,item.Level); i <= 4; i++)
-        results.Add(GetResultForLevel(item, i));
-    return results;
-})
-    .SelectMany(d => d)
-    .ToList();
-
-
-
-
-
-
-
-var query = data.AsEnumerable();
-var minBnb = data.Min(d => d.TotalInvestmentInBnb);
-Console.Write($"Minimum BNB for acquisition is {minBnb}");
-
-
-Console.WriteLine("Filter by total acquisition in bnb? if yes write value else press enter");
-
-string input = Console.ReadLine();
-
-decimal bnb = 0;
-bool filter = decimal.TryParse(input, out bnb);
-
-if (filter)
-    query = query.Where(d => d.TotalInvestmentInBnb <= bnb);
-
-var results = query
-    .OrderByDescending(d => d.GoldByDay)
-    .ThenBy(d => d.TotalInvestment)
-    .ToList();
-
-
-if (results.Any())
-{
-    Console.WriteLine("INVESTMENTO\tGOLD/D\tROI\tMAINSTAT\tTARGET LVL\tLINK");
-    foreach (var item in results.Take(60))
-    {
-        Console.WriteLine($"Inv: USD {item.TotalInvestment:N2} | {item.TotalInvestmentInBnb:N6} BNB \t {item.GoldByDay} gold/d | {item.GoldByDay * goldPrice:N2}USD/d \t ROI em {item.Roi.TotalDays:N1} dias \t mainstat {R.GetMainStat(item.Item)} \t lvl {item.Level} (+{item.LevelUpBy} | {item.MinInvestInGold} gold) \t https://market.binaryx.pro/#/oneoffsale/detail/{item.Item.Order_Id}");
+        case "help":
+            DisplayHelp();
+            break;
+        case "prices":
+            Prices();
+            break;
+        case "reprice":
+            await Reprice();
+            break;
+        case "refresh":
+            await Refresh();
+            break;
+        case "show":
+            if (param.GetValue(1) is "filter")
+                ShowFilter();
+            else
+                Show(param.GetValue(1) as string);
+            break;
+        case "cost":
+            Cost(param.GetValue(1) as string, param.GetValue(2) as string);
+            break;
+        case "roi":
+            ROI(param.GetValue(1) as string);
+            break;
+        case "carrer":
+            Carrer(param.GetValue(1) as string);
+            break;
+        case "min":
+            Min(param.GetValue(1) as string);
+            break;
+        case "order":
+            Order(param.GetValue(1) as string);
+            break;
+        case "reanalise":
+            calculator.Process();
+            break;
+        case "exit":
+            break;
+        default:
+            Console.WriteLine("command not found, type HELP for more information on commands");
+            break;
     }
-}
-else
-    Console.WriteLine("There are no results");
+} while (input is not "exit");
 
-
-Console.ReadLine();
-
-public static class R
+void DisplayHelp()
 {
+    Console.WriteLine("COMMANDS\tABOUT");
+    Console.WriteLine("HELP\tDisplay this text");
+    Console.WriteLine("PRICES\tShow coins prices");
+    Console.WriteLine("REPRICE\tReloads all prices");
+    Console.WriteLine("REFRESH\tReloads offers");
+    Console.WriteLine("SHOW FILTER\tShow current filter");
+    Console.WriteLine("COST [NUMBER | NULL] [BNB | USD]\tFilter results by max BNB or USD");
+    Console.WriteLine("ROI [NUMBER]\tFilter results by max day of ROI");
+    Console.WriteLine("CARRER [CARRER]\tFilter results by carrer, values are Warrior, Thief, Mage, Ranger");
+    Console.WriteLine("MIN [GOLD/DAY]\tFilter results by the min gold/day");
+    Console.WriteLine("ORDER [FIELD]\tOrder results by field");
+    Console.WriteLine("SHOW [number]\tShows top [number] results");
+    Console.WriteLine("REANALISE\tReprocess data");
+    Console.WriteLine("EXIT\tExits the application");
+}
 
+void Prices() => calculator.WritePrices();
 
-    public static HttpClient _client = new HttpClient()
+async Task Reprice()
+{
+    Console.WriteLine("Refreshing prices");
+    await calculator.RefreshPrices();
+    Prices();
+}
+
+async Task Refresh()
+{
+    Console.WriteLine("Reloading all offers");
+    await calculator.RefreshOffers();
+    Console.WriteLine($"Offers refreshed, total of {calculator.Offers.Count} offers");
+}
+
+void ShowFilter()
+{
+    if (calculator.Filter.IsEmpty)
+        Console.WriteLine("Current filter is empty");
+    else
     {
-        DefaultRequestHeaders =
+
+        Console.WriteLine("Current filter:");
+        if (calculator.Filter.MaxBNB.HasValue || calculator.Filter.MaxUSD.HasValue)
         {
-            { "Accept", "application/json" }
+            var (currency, value) = calculator.Filter.MaxBNB.HasValue ? ("BNB", calculator.Filter.MaxBNB) : ("USD", calculator.Filter.MaxUSD);
+            Console.WriteLine($"MAX COST OF {value} {currency}");
         }
-    };
 
+        if (calculator.Filter.MinGoldDay.HasValue)
+            Console.WriteLine($"MIN G/d OF {calculator.Filter.MinGoldDay}");
 
+        if (calculator.Filter.MaxROI.HasValue)
+            Console.WriteLine($"MAX ROI OF {calculator.Filter.MaxROI} days");
 
-    public static decimal GoldByDay(int mainStat, int level)
-        => (decimal)((864 + 288 * (mainStat - 86)) * Math.Pow(2, level - 2));
+        if (calculator.Filter.Carrer.HasValue)
+            Console.WriteLine($"CARRER OF {calculator.Filter.Carrer}");
 
+        Console.WriteLine($"ORDER BY {calculator.Filter.Order}");
 
-    
+    }
+}
 
-    public static Task<CoinApiResult> GetBnxPrice()
-        => _client.GetFromJsonAsync<CoinApiResult>("https://api.pancakeswap.info/api/v2/tokens/0x8C851d1a123Ff703BD1f9dabe631b69902Df5f97");
-
-    public static Task<CoinApiResult> GetGoldPrice()
-        => _client.GetFromJsonAsync<CoinApiResult>("https://api.pancakeswap.info/api/v2/tokens/0xb3a6381070b1a15169dea646166ec0699fdaea79");
-
-    public static Task<BinanceApiResult> GetBnbPrice() 
-        => _client.GetFromJsonAsync<BinanceApiResult>("https://api.binance.com/api/v3/avgPrice?symbol=BNBUSDT");
-
-
-    public static async Task<List<Offer>> LoadAllViableItens()
+void Cost(string numberStr, string coinStr)
+{
+    if (numberStr == "null")
     {
-        var handler = new ClearanceHandler("http://localhost:8191");
-
-        HttpClient client = new(handler)
-        {
-            BaseAddress = new Uri("https://market.binaryx.pro")
-        };
-
-        List<Offer> result = new();
-
-        foreach (var filter in Helpers.ClassFilters)
-        {
-
-            int page = 0;
-            int count = -1;
-            int size = 99;
-
-            while (count == -1 || page * size < count)
-            {
-                var response = await client.GetFromJsonAsync<BinaryXMartketApiResult>($"info/getSales?page={page}&page_size={size}&status=selling&n&sort=price&direction=asc&career={Helpers.CarrersIds[filter.Key]}&value_attr={filter.Value}&start_value=86,61&end_value=0,0&pay_addr=");
-
-                if (count == -1)
-                    count = response?.Data?.Result?.Total ?? 0;
-
-                if (response?.Data?.Result?.Items?.Any() == true)
-                    result.AddRange(response.Data.Result.Items);
-
-                page++;
-            }
-        }
-        return result;
+        calculator.Filter.MaxBNB = null;
+        calculator.Filter.MaxUSD = null;
+        Console.WriteLine("Clearing COST filter");
+        return;
     }
 
-    public static int GetGoldToLevelUp(int currentLevel, int targetLevel)
+    if (!double.TryParse(numberStr, out var number))
     {
-        int result = 0;
-        while (currentLevel < targetLevel)
-            result += Helpers.GoldForLevel[++currentLevel];
-        return result;
+        Console.WriteLine("Could not parse number");
+        return;
     }
 
+    if (coinStr != "bnb" && coinStr != "usd")
+    {
+        Console.WriteLine("Could not parse coin");
+        return;
+    }
+    if (coinStr is "bnb")
+        calculator.Filter.MaxBNB = number;
+    else if (coinStr is "usd")
+        calculator.Filter.MaxUSD = number;
+    else
+    {
+        Console.WriteLine("Could not parse command");
+        return;
+    }
 
+    Console.WriteLine($"Filtering results with less than {number} {coinStr.ToUpper()}");
+}
+
+void ROI(string numberStr)
+{
+    if (numberStr == "null")
+    {
+        calculator.Filter.MaxROI = null;
+        Console.WriteLine("Clearing ROI filter");
+        return;
+    }
+
+    if (!int.TryParse(numberStr, out var days))
+    {
+        Console.WriteLine("Could not parse days");
+        return;
+    }
+
+    if (days < 0)
+    {
+        Console.WriteLine("Days cannot be negative");
+        return;
+    }
+
+    calculator.Filter.MaxROI = days;
+    Console.WriteLine($"Filtering results with less than {days} of ROI");
+}
+
+void Carrer(string carrerStr)
+{
+    if (carrerStr == "null")
+    {
+        Console.WriteLine("Clearing carrer filter");
+        calculator.Filter.Carrer = null;
+        return;
+    }
+
+    if (!Enum.TryParse<Carrer>(carrerStr, true, out var carrer))
+    {
+        Console.WriteLine("Could not parse carrer");
+        return;
+    }
+
+    calculator.Filter.Carrer = carrer;
+    Console.WriteLine($"Filtering results of carrer {carrer}");
+}
+
+void Min(string numberStr)
+{
+    if (numberStr == "null")
+    {
+        Console.WriteLine("Clearing filter of Gold/d");
+        calculator.Filter.MinGoldDay = null;
+        return;
+    }
+
+    if (!double.TryParse(numberStr, out var golday))
+    {
+        Console.WriteLine("Could not parse gold/day");
+        return;
+    }
+
+    calculator.Filter.MinGoldDay = golday;
+    Console.WriteLine($"Filtering results with more than {golday} gold/day");
+}
+
+void Order(string orderStr)
+{
+    if (orderStr == "null")
+    {
+        Console.WriteLine("Clearing order");
+        calculator.Filter.Order = FilterOrder.Cost;
+        return;
+    }
+
+    if (!Enum.TryParse<FilterOrder>(orderStr, true, out var order))
+    {
+        Console.WriteLine("Could not parse order");
+        Console.WriteLine("Valid input are [Gold, ROI, Cost]");
+        return;
+    }
+
+    calculator.Filter.Order = order;
 
 }
 
-
+void Show(string numberStr)
+{
+    if (!int.TryParse(numberStr, out var number))
+    {
+        Console.WriteLine("Could not parse number");
+        return;
+    }
+    calculator.Display(number);
+}
