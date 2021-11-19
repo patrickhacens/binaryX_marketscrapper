@@ -4,5 +4,8 @@ public enum FilterOrder
 {
     Gold,
     ROI,
-    Cost
+    Cost,
+    Net30,
+    Net60,
+    Net90
 }

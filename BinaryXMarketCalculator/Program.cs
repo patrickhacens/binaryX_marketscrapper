@@ -17,49 +17,58 @@ do
 {
     input = Console.ReadLine();
     string[] param = input.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(d => d.ToLower()).ToArray();
-    switch (param[0])
+    try
     {
-        case "help":
-            DisplayHelp();
-            break;
-        case "prices":
-            Prices();
-            break;
-        case "reprice":
-            await Reprice();
-            break;
-        case "refresh":
-            await Refresh();
-            break;
-        case "show":
-            if (param.GetValue(1) is "filter")
-                ShowFilter();
-            else
-                Show(param.GetValue(1) as string);
-            break;
-        case "cost":
-            Cost(param.GetValue(1) as string, param.GetValue(2) as string);
-            break;
-        case "roi":
-            ROI(param.GetValue(1) as string);
-            break;
-        case "carrer":
-            Carrer(param.GetValue(1) as string);
-            break;
-        case "min":
-            Min(param.GetValue(1) as string);
-            break;
-        case "order":
-            Order(param.GetValue(1) as string);
-            break;
-        case "reanalise":
-            calculator.Process();
-            break;
-        case "exit":
-            break;
-        default:
-            Console.WriteLine("command not found, type HELP for more information on commands");
-            break;
+
+        switch (param[0])
+        {
+            case "help":
+                DisplayHelp();
+                break;
+            case "prices":
+                Prices();
+                break;
+            case "reprice":
+                await Reprice();
+                break;
+            case "refresh":
+                await Refresh();
+                break;
+            case "show":
+                if (param.GetValue(1) is "filter")
+                    ShowFilter();
+                else
+                    Show(param.GetValue(1) as string);
+                break;
+            case "cost":
+                Cost(param.GetValue(1) as string, param.GetValue(2) as string);
+                break;
+            case "roi":
+                ROI(param.GetValue(1) as string);
+                break;
+            case "carrer":
+                Carrer(param.GetValue(1) as string);
+                break;
+            case "min":
+                Min(param.GetValue(1) as string);
+                break;
+            case "order":
+                Order(param.GetValue(1) as string);
+                break;
+            case "reanalise":
+                calculator.Process();
+                break;
+            case "exit":
+                break;
+            default:
+                Console.WriteLine("command not found, type HELP for more information on commands");
+                break;
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine("Exception occurred");
+        Console.Error.WriteLine(ex.Message);
     }
 } while (input is not "exit");
 
@@ -234,7 +243,7 @@ void Order(string orderStr)
     if (!Enum.TryParse<FilterOrder>(orderStr, true, out var order))
     {
         Console.WriteLine("Could not parse order");
-        Console.WriteLine("Valid input are [Gold, ROI, Cost]");
+        Console.WriteLine("Valid input are [Gold, ROI, Cost, Net30, Net60, Net90]");
         return;
     }
 

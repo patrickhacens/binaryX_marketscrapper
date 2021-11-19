@@ -1,4 +1,6 @@
-﻿namespace BinaryXMarketCalculator
+﻿using BinaryXMarketCalculator.Models;
+
+namespace BinaryXMarketCalculator
 {
     public class RevenueAnalysis
     {
@@ -12,5 +14,8 @@
         public double LevelUpCost { get; set; }
         public int LevelUpBy { get; set; }
         public TimeSpan Roi { get; set; }
+        public double NetProjection30 { get; set; }
+        public double NetProjection60 { get; set; }
+        public double NetProjection90 { get; set; }
     }
 }

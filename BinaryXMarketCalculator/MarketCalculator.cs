@@ -75,22 +75,28 @@ namespace BinaryXMarketCalculator
 
         public void ClearFilter() => Filter.Clear();
 
-        public void WriteHeaders() =>
+        public static void WriteHeaders() =>
             Console.WriteLine(TabStr(
                 "TOTAL COST",
                 "ROI",
                 "GOLD/Day",
                 "LEVEL",
                 "JOB",
+                "REVENUE 30",
+                "REVENUE 60",
+                "REVENUE 90",
                 "LINK"));
 
-        public void WriteOffer(RevenueAnalysis o) =>
+        public static void WriteOffer(RevenueAnalysis o) =>
             Console.WriteLine(TabStr(
                 $"USD {o.TotalInvestment:N2} | {o.TotalInvestmentInBnb:N4} BNB",
                 $"{o.Roi.TotalDays:N1}",
                 $"{o.GoldDay:N0}G/d",
                 $"{o.Offer.Level} => {o.Offer.Level + o.LevelUpBy} ({o.LevelUpCost/1000}kG)",
                 $"{o.Job}",
+                $"{o.NetProjection30:N2} USD",
+                $"{o.NetProjection60:N2} USD",
+                $"{o.NetProjection90:N2} USD",
                 $"https://market.binaryx.pro/#/oneoffsale/detail/{o.Offer.Order_Id}"
                 ));
 
@@ -179,6 +185,15 @@ namespace BinaryXMarketCalculator
                 case FilterOrder.Cost:
                     query = query.OrderBy(d => d.TotalInvestment).ThenByDescending(d => d.GoldDay).ThenBy(d => d.Roi);
                     break;
+                case FilterOrder.Net30:
+                    query = query.OrderByDescending(d => d.NetProjection30).ThenBy(d => d.GoldCost).ThenBy(d => d.Roi);
+                    break;
+                case FilterOrder.Net60:
+                    query = query.OrderByDescending(d => d.NetProjection60).ThenBy(d => d.GoldCost).ThenBy(d => d.Roi);
+                    break;
+                case FilterOrder.Net90:
+                    query = query.OrderByDescending(d => d.NetProjection90).ThenBy(d => d.GoldCost).ThenBy(d => d.Roi);
+                    break;
                 default:
                     break;
             }
@@ -188,7 +203,7 @@ namespace BinaryXMarketCalculator
                 WriteOffer(offer);
         }
 
-        private string TabStr(params string[] strs) => String.Join("\t", strs);
+        private static string TabStr(params string[] strs) => String.Join("\t", strs);
 
         private Task<CoinApiResult> GetBnxPrice()
             => Client.GetFromJsonAsync<CoinApiResult>("https://api.pancakeswap.info/api/v2/tokens/0x8C851d1a123Ff703BD1f9dabe631b69902Df5f97", _jsonOp);
@@ -215,7 +230,7 @@ namespace BinaryXMarketCalculator
             return salaryPerDay * Math.Pow(2, level-2);
         }
 
-        private IEnumerable<GoldJob> GetJobsFor(Offer offer)
+        private static IEnumerable<GoldJob> GetJobsFor(Offer offer)
         {
             if (offer.Carrer == Carrer.Mage && offer is { Brains: > 86, Charm: > 61 })
                 yield return GoldJob.ScrollScribe;
@@ -256,7 +271,16 @@ namespace BinaryXMarketCalculator
                 Roi = roi,
                 TotalInvestment = totalInvestment,
                 TotalInvestmentInBnb = totalInvestmentInBnb,
+                NetProjection30 = GetNetProjection(goldByDay, totalInvestment, 30),
+                NetProjection60 = GetNetProjection(goldByDay, totalInvestment, 60),
+                NetProjection90 = GetNetProjection(goldByDay, totalInvestment, 90),
             };
+        }
+
+        private double GetNetProjection(double goldByDay, double totalCost, int days)
+        {
+            var usdday = goldByDay * GoldPrice;
+            return usdday * days - totalCost;
         }
 
         private static double SalaryByBlockBasicDungeon(int mainStat)
